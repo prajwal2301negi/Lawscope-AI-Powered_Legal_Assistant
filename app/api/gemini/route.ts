@@ -22,7 +22,7 @@ function checkApiKey(): void {
 
 // ----------------- Helper Functions -----------------
 
-export async function generateSimplification(legalText: string): Promise<string> {
+async function generateSimplification(legalText: string): Promise<string> {
   checkApiKey();
   if (!model) throw new Error('Gemini model not initialized');
 
@@ -48,7 +48,7 @@ export async function generateSimplification(legalText: string): Promise<string>
   return result.response.text();
 }
 
-export async function generateChatResponse(userQuery: string): Promise<string> {
+async function generateChatResponse(userQuery: string): Promise<string> {
   checkApiKey();
   if (!model) throw new Error('Gemini model not initialized');
 
@@ -72,7 +72,7 @@ export async function generateChatResponse(userQuery: string): Promise<string> {
   return result.response.text();
 }
 
-export async function generateScenarioAnalysis(scenarioData: string): Promise<string> {
+async function generateScenarioAnalysis(scenarioData: string): Promise<string> {
   checkApiKey();
   if (!model) throw new Error('Gemini model not initialized');
 
