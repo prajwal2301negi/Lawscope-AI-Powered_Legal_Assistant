@@ -1,9 +1,12 @@
+import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 if (!apiKey) {
-  console.warn('Gemini API key not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in your .env.local file.');
+  console.warn(
+    'Gemini API key not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in your .env.local file.'
+  );
 }
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
@@ -11,19 +14,19 @@ const model = genAI ? genAI.getGenerativeModel({ model: 'gemini-2.5-pro' }) : nu
 
 function checkApiKey(): void {
   if (!apiKey || apiKey === 'your-api-key-here') {
-    throw new Error('Gemini API key not configured. Please add your API key to the .env.local file.');
+    throw new Error(
+      'Gemini API key not configured. Please add your API key to the .env.local file.'
+    );
   }
 }
 
-export async function generateSimplification(legalText: string): Promise<string> {
-  try {
-    checkApiKey();
-    
-    if (!model) {
-      throw new Error('Gemini model not initialized');
-    }
+// ----------------- Helper Functions -----------------
 
-    const prompt = `
+export async function generateSimplification(legalText: string): Promise<string> {
+  checkApiKey();
+  if (!model) throw new Error('Gemini model not initialized');
+
+  const prompt = `
     You are a legal expert specializing in simplifying complex legal documents for general public understanding.
 
     Please analyze the following legal text and provide:
@@ -39,29 +42,17 @@ export async function generateSimplification(legalText: string): Promise<string>
     ${legalText}
 
     Please make it accessible to someone with no legal background.
-    `;
+  `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
-  } catch (error) {
-    console.error('Error generating simplification:', error);
-    if (error instanceof Error && error.message.includes('API key')) {
-      throw new Error('API key not configured. Please set up your Gemini API key in the .env.local file.');
-    }
-    throw new Error('Failed to generate simplification. Please check your API configuration.');
-  }
+  const result = await model.generateContent(prompt);
+  return result.response.text();
 }
 
 export async function generateChatResponse(userQuery: string): Promise<string> {
-  try {
-    checkApiKey();
-    
-    if (!model) {
-      throw new Error('Gemini model not initialized');
-    }
+  checkApiKey();
+  if (!model) throw new Error('Gemini model not initialized');
 
-    const prompt = `
+  const prompt = `
     You are a helpful legal assistant. Answer the following legal question in simple, understandable terms.
     
     Provide:
@@ -75,29 +66,17 @@ export async function generateChatResponse(userQuery: string): Promise<string> {
     - Be helpful but remind users this is not formal legal advice
     
     User Question: ${userQuery}
-    `;
+  `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
-  } catch (error) {
-    console.error('Error generating chat response:', error);
-    if (error instanceof Error && error.message.includes('API key')) {
-      throw new Error('API key not configured. Please set up your Gemini API key in the .env.local file.');
-    }
-    throw new Error('Failed to generate response. Please check your API configuration.');
-  }
+  const result = await model.generateContent(prompt);
+  return result.response.text();
 }
 
 export async function generateScenarioAnalysis(scenarioData: string): Promise<string> {
-  try {
-    checkApiKey();
-    
-    if (!model) {
-      throw new Error('Gemini model not initialized');
-    }
+  checkApiKey();
+  if (!model) throw new Error('Gemini model not initialized');
 
-    const prompt = `
+  const prompt = `
     You are a legal analyst. Analyze the following scenario and provide:
     
     1. A clear explanation of the legal situation
@@ -109,16 +88,50 @@ export async function generateScenarioAnalysis(scenarioData: string): Promise<st
     Please provide practical, actionable advice in plain English.
     
     Scenario: ${scenarioData}
-    `;
+  `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
-  } catch (error) {
-    console.error('Error generating scenario analysis:', error);
-    if (error instanceof Error && error.message.includes('API key')) {
-      throw new Error('API key not configured. Please set up your Gemini API key in the .env.local file.');
+  const result = await model.generateContent(prompt);
+  return result.response.text();
+}
+
+// ----------------- API Route Handler -----------------
+
+export async function POST(req: Request) {
+  try {
+    const { type, text } = await req.json();
+
+    if (!type || !text) {
+      return NextResponse.json(
+        { error: 'Missing required fields: type or text' },
+        { status: 400 }
+      );
     }
-    throw new Error('Failed to generate scenario analysis. Please check your API configuration.');
+
+    let responseText: string;
+
+    switch (type) {
+      case 'simplify':
+        responseText = await generateSimplification(text);
+        break;
+      case 'chat':
+        responseText = await generateChatResponse(text);
+        break;
+      case 'scenario':
+        responseText = await generateScenarioAnalysis(text);
+        break;
+      default:
+        return NextResponse.json(
+          { error: 'Invalid type. Use simplify, chat, or scenario' },
+          { status: 400 }
+        );
+    }
+
+    return NextResponse.json({ success: true, result: responseText });
+  } catch (error: any) {
+    console.error('API Error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
   }
 }
